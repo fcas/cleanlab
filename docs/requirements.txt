@@ -21,7 +21,7 @@ speechbrain==0.5.13
 faiss-cpu==1.8.0
 datasets>=2.14.6
 xgboost
-matplotlib==3.7.4  # TODO: uncap version
+matplotlib==3.10.9  # TODO: uncap version
 huggingface_hub==0.26.5  # TODO: uncap version
 torch==2.1.2  # TODO: uncap version
 torchvision==0.16.2  # TODO: uncap version
