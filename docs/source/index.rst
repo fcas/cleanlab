@@ -1,12 +1,12 @@
-:og:title: Cleanlab Open-Source Documentation
-:og:description: Get started, learn about capabilities, and follow tutorials to improve your own Data and Models.
+:og:title: Open-Source Documentation | Cleanlab
+:og:description: Get started with Cleanlab Open-Source, learn about capabilities, and follow tutorials to improve your own Data and Models.
 
 cleanlab open-source documentation
 ==================================
 
 `cleanlab <https://github.com/cleanlab/cleanlab>`_ **automatically detects data and label issues in your ML datasets.**
 
-| This helps you improve your data and train reliable ML models on noisy real-world datasets. cleanlab has already found thousands of `label errors <https://labelerrors.com>`_ in ImageNet, MNIST, and other popular ML benchmarking datasets. Beyond handling label errors, this is a comprehensive open-source library implementing many data-centric AI capabilities. Start using automation to improve your data in 5 minutes!
+| This helps you improve your data and train robust ML models on noisy real-world datasets. cleanlab has already found thousands of `label errors <https://labelerrors.com>`_ in ImageNet, MNIST, and other popular ML benchmarking datasets. Beyond handling label errors, this is a comprehensive open-source library implementing many data-centric AI capabilities. Start using automation to improve your data!
 
 Quickstart
 ==========
@@ -16,17 +16,30 @@ Quickstart
 
 .. tabs::
 
-   .. tab:: pip
+   .. tab:: uv
 
       .. code-block:: bash
 
-         pip install cleanlab
+         uv pip install cleanlab
 
       To install the package with all optional dependencies:
 
       .. code-block:: bash
 
+         uv pip install "cleanlab[all]"
+
+   .. tab:: pip
+
+      .. code-block:: bash
+
+         pip install cleanlab
+      
+      To install the package with all optional dependencies:
+
+      .. code-block:: bash
+
          pip install "cleanlab[all]"
+
 
    .. tab:: conda
 
@@ -38,19 +51,25 @@ Quickstart
 
       .. code-block:: bash
 
+         uv pip install git+https://github.com/cleanlab/cleanlab.git
+
+      Or with pip:
+
+      .. code-block:: bash
+
          pip install git+https://github.com/cleanlab/cleanlab.git
 
       To install the package with all optional dependencies:
 
       .. code-block:: bash
 
-         pip install "git+https://github.com/cleanlab/cleanlab.git#egg=cleanlab[all]"
+         uv pip install "git+https://github.com/cleanlab/cleanlab.git#egg=cleanlab[all]"
 
 
-2. Find common issues in your data
-----------------------------------
+2. Check your data for all sorts of issues
+------------------------------------------
 
-cleanlab automatically detects various issues in *any dataset that a classifier can be trained on*. The cleanlab package *works with any ML model* by operating on model outputs (predicted class probabilities or feature embeddings) -- it doesn't require that a particular model created those outputs. For any classification dataset, use your trained model to produce `pred_probs` (predicted class probabilities) and/or `feature_embeddings` (numeric vector representations of each datapoint). Then, these few lines of code can detect common real-world issues in your dataset like label errors, outliers, near duplicates, etc:
+cleanlab automatically detects various issues in *any dataset that a classifier can be trained on*. The cleanlab package *works with any ML model* by operating on model outputs (predicted class probabilities or feature embeddings) -- it doesn't require that a particular model created those outputs. For any classification dataset, use your trained model to produce `pred_probs` (predicted class probabilities) and/or `feature_embeddings` (numeric vector representations of each datapoint). To automatically check your dataset for common real-world issues (like label errors, outliers, near duplicates, IID violations, underperforming groups, ...), simply run these few lines of code:
 
 .. code-block:: python
 
@@ -58,13 +77,15 @@ cleanlab automatically detects various issues in *any dataset that a classifier 
 
     lab = Datalab(data=your_dataset, label_name="column_name_of_labels")
     lab.find_issues(features=feature_embeddings, pred_probs=pred_probs)
-    lab.report()  # summarize issues in dataset, how severe they are, ...
+    lab.report()  # summarize issues in dataset, how severe they are in each data point, ...
+
+While other data quality tools only catch limited types of data issues based on manually pre-defined validation rules, cleanlab applies automated data-centric AI techniques using your trained ML model to detect many more types of data issues that would otherwise be hard to catch. Don't dive into ML model improvement without first using AI to help check your data!
 
 
 3. Handle label errors and train robust models with noisy labels
 ----------------------------------------------------------------
 
-Mislabeled data is a particularly concerning issue plaguing real-world datasets. To use a scikit-learn-compatible model for classification with noisy labels, you don't need to train a model to find label issues -- you can pass the untrained model object, data, and labels into :py:meth:`CleanLearning.find_label_issues <cleanlab.classification.CleanLearning.find_label_issues>` and cleanlab will handle model training for you.
+Mislabeled data is a particularly concerning issue plaguing real-world datasets. To use a scikit-learn-compatible model for classification with noisy labels, you don't need to train a model to find label issues -- you can pass the untrained model object, data, and labels into :py:meth:`CleanLearning.find_label_issues <cleanlab.classification.CleanLearning.find_label_issues>` and cleanlab will handle model training for you.
 
 .. code-block:: python
 
@@ -73,7 +94,7 @@ Mislabeled data is a particularly concerning issue plaguing real-world datasets.
     # This works with any sklearn-compatible model - just input data + labels and cleanlab will detect label issues ツ
     label_issues_info = CleanLearning(clf=sklearn_compatible_model).find_label_issues(data, labels)
 
-:py:class:`CleanLearning <cleanlab.classification.CleanLearning>` also works with models from most standard ML frameworks by wrapping the model for scikit-learn compliance, e.g. `tensorflow/keras <tutorials/text.ipynb>`_ (using our KerasWrapperModel), `pytorch <tutorials/image.ipynb>`_ (using skorch package), etc.
+:py:class:`CleanLearning <cleanlab.classification.CleanLearning>` also works with models from most standard ML frameworks by wrapping the model for scikit-learn compliance, e.g. pytorch (can use `skorch <https://github.com/skorch-dev/skorch>`_ package), etc.
 
 :py:meth:`find_label_issues <cleanlab.classification.CleanLearning.find_label_issues>` returns a boolean mask flagging which examples have label issues and a numeric label quality score for each example quantifying our confidence that its label is correct.
 
@@ -120,27 +141,8 @@ Beyond handling label errors, cleanlab supports other data-centric AI capabiliti
 - Active learning with multiple annotators to identify which data is most informative to label or re-label next  `(tutorial) <https://github.com/cleanlab/examples/blob/master/active_learning_multiannotator/active_learning.ipynb>`_
 
 
-If you have questions, check out our `FAQ <tutorials/faq.ipynb>`_ and feel free to ask in `Slack <https://cleanlab.ai/slack>`_!
+If you have questions, check out our `FAQ <tutorials/faq.ipynb>`_ and feel free to open a Github Issue!
 
-Contributing
-------------
-
-As cleanlab is an open-source project, we welcome contributions from the community.
-
-Please see our `contributing guidelines <https://github.com/cleanlab/cleanlab/blob/master/CONTRIBUTING.md>`_ for more information.
-
-Easy Mode
----------
-
-While this open-source library **finds** data issues, its utility depends on you having a good ML model and  interface to efficiently **fix** these issues in your dataset. Providing all these pieces, `Cleanlab Studio <https://cleanlab.ai/blog/data-centric-ai/>`_ is a *no-code* platform to **find and fix** problems in image/text/tabular datasets. Cleanlab Studio integrates the data quality algorithms from this library on top of cutting-edge AutoML & Foundation models fit to your data, and presents detected issues in a smart data editing interface.
-
-.. image:: https://raw.githubusercontent.com/cleanlab/assets/master/cleanlab/ml-with-cleanlab-studio.png
-   :width: 800
-   :alt: Stages of modern AI pipeline that can now be automated with Cleanlab Studio
-
-`There is no easier way <https://cleanlab.ai/blog/data-centric-ai/>`_ to turn *unreliable* raw data into *reliable* models/analytics. `Try it for free! <https://cleanlab.ai/signup/>`_
-
-Link to Cleanlab Studio docs: `help.cleanlab.ai <https://help.cleanlab.ai/>`_
 
 .. toctree::
    :hidden:
@@ -152,6 +154,7 @@ Link to Cleanlab Studio docs: `help.cleanlab.ai <https://help.cleanlab.ai/>`_
    :caption: Tutorials
 
    Datalab Tutorials <tutorials/datalab/index>
+   Improving ML Performance <tutorials/improving_ml_performance>
    CleanLearning Tutorials <tutorials/clean_learning/index>
    Workflows of Data-Centric AI <tutorials/indepth_overview>
    Analyze Dataset-level Issues <tutorials/dataset_health>
@@ -194,18 +197,12 @@ Link to Cleanlab Studio docs: `help.cleanlab.ai <https://help.cleanlab.ai/>`_
    :hidden:
 
    Datalab issue types <cleanlab/datalab/guide/index>
-   How to contribute <https://github.com/cleanlab/cleanlab/blob/master/CONTRIBUTING.md>
 
 .. toctree::
    :caption: Links
    :hidden:
 
-   Website <https://cleanlab.ai>
    GitHub <https://github.com/cleanlab/cleanlab>
    PyPI <https://pypi.org/project/cleanlab/>
    Conda <https://anaconda.org/conda-forge/cleanlab>
-   Community Discussions <https://cleanlab.ai/slack>
    Blog <https://cleanlab.ai/blog/>
-   Videos <https://www.youtube.com/@CleanlabAI/playlists>
-   Cleanlab Studio (Easy Mode) <https://cleanlab.ai/blog/data-centric-ai/>
-   Cleanlab Studio Docs <https://help.cleanlab.ai>

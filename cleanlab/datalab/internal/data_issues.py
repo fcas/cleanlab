@@ -1,18 +1,3 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
 """
 Module for the :py:class:`DataIssues` class, which serves as a central repository for storing
 information and statistics about issues found in a dataset.
@@ -26,6 +11,7 @@ The collected information can be accessed using the
 `~cleanlab.datalab.internal.data_issues.DataIssues.get_info` method.
 We recommend using that method instead of this module, which is just intended for internal use.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -124,7 +110,7 @@ class _ClassificationInfoStrategy(_InfoStrategy):
                 labels = info.get(key, None)
                 if labels is not None:
                     info[key] = np.vectorize(label_map.get)(labels)
-            info["class_names"] = list(label_map.values())
+            info["class_names"] = list(label_map.values())  # type: ignore
         return info
 
 
@@ -171,8 +157,8 @@ class _MultilabelInfoStrategy(_InfoStrategy):
             for key in ["given_label", "predicted_label"]:
                 labels = info.get(key, None)
                 if labels is not None:
-                    info[key] = [list(map(label_map.get, label)) for label in labels]
-            info["class_names"] = list(label_map.values())
+                    info[key] = [list(map(label_map.get, label)) for label in labels]  # type: ignore
+            info["class_names"] = list(label_map.values())  # type: ignore
         return info
 
 

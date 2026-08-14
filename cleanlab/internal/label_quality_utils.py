@@ -1,20 +1,5 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
-
 """Helper methods used internally for computing label quality scores."""
+
 import warnings
 import numpy as np
 from typing import Optional
@@ -89,7 +74,7 @@ def get_normalized_entropy(
 
     Read more about normalized entropy `on Wikipedia <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_.
 
-    Normalized entropy is used in active learning for uncertainty sampling: https://towardsdatascience.com/uncertainty-sampling-cheatsheet-ec57bc067c0b
+    Normalized entropy is used in active learning for uncertainty sampling: https://medium.com/data-science/uncertainty-sampling-cheatsheet-ec57bc067c0b
 
     Unlike label-quality scores, entropy only depends on the model's predictions, not the given label.
 

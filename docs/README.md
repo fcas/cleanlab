@@ -27,8 +27,17 @@ If you'd like to build our docs locally or remotely yourself, or want to know mo
 2. Install the required packages to build the docs:
 
 ```
+uv pip install -r docs/requirements.txt
+```
+
+Or with pip:
+
+```
 pip install -r docs/requirements.txt
 ```
+
+For Macs with Apple silicon: replace tensorflow in `docs/requirements.txt` with: `tensorflow-macos==2.9.2` and `tensorflow-metal==0.5.1`
+
 
 3. Install [Pandoc](https://pandoc.org/installing.html).
 
@@ -37,7 +46,7 @@ pip install -r docs/requirements.txt
 5. **[Optional]** [Create a new branch](https://www.atlassian.com/git/tutorials/using-branches), make your code changes, and then `git commit` them. **ONLY COMMITTED CHANGES WILL BE REFLECTED IN THE DOCS BUILD WITH `sphinx-multiversion`.** Instead use `sphinx-build` if you don't want to commit some test changes but still want to see their corresponding docs.
 
 6. Build the docs with either
-   1. [`sphinx-multiversion`](https://holzhaus.github.io/sphinx-multiversion):
+   1. [`sphinx-multiversion`](https://sphinx-contrib.github.io/multiversion/):
 
       * If you're building from a **branch** (usually the `master` branch):
 
@@ -66,7 +75,7 @@ pip install -r docs/requirements.txt
 
    **Skipping specific notebooks**: If you want to skip rendering a few specific notebooks during your local build, the best way to do this is to temporarily move the files outside the `cleanlab` folder (so `nbsphinx` would not find it), then build the docs, before finally moving the files back (to ensure they will not be deleted when pushed to GitHub)
 
-   Example workflow for skipping notebooks, given our current working directory is the `cleanlab` root folder and we want to ignore the `audio.ipynb` notebook:
+   Example workflow for skipping notebooks, given our current working directory is the `cleanlab` root folder and we want to ignore a specific notebook:
 
    1. create an empty folder outside of cleanlab folder
    ```
@@ -75,7 +84,7 @@ pip install -r docs/requirements.txt
 
    2. move the notebook to ignore from local build to the newly created folder
    ```
-   mv docs/source/tutorials/audio.ipynb ../ignore_notebooks
+   mv docs/source/tutorials/path/to/notebook.ipynb ../ignore_notebooks
    ```
 
    3. build the docs locally, using `sphinx-build` as it does not require you to commit your changes
@@ -85,7 +94,7 @@ pip install -r docs/requirements.txt
 
    4. move the notebook back to its original location
    ```
-   mv ../ignore_notebooks/audio.ipynb docs/source/tutorials
+   mv ../ignore_notebooks/notebook.ipynb docs/source/tutorials/path/to/
    ```
 
 

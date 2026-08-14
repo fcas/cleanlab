@@ -1,27 +1,28 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
+__version__ = "2.9.0"
 
-
-__version__ = "2.6.5"
-
-# 2.6.5 - Not yet released, you are using bleeding-edge developer version. See its documentation at: https://docs.cleanlab.ai/master/
+# 2.9.1 - Not yet released, you are using bleeding-edge developer version. See its documentation at: https://docs.cleanlab.ai/master/
 
 # ------------------------------------------------
 # | PREVIOUS MAJOR VERSION RELEASE NOTES SUMMARY |
 # ------------------------------------------------
+
+# 2.9.0 - Streamlined dependencies and improved maintainability
+#   - Removed TensorFlow/Keras dependencies and cleanlab.models.keras module
+#   - Updated documentation with modern installation methods
+
+# 2.8.0 - Python 3.12-3.14 support and compatibility improvements
+#   - Add support for Python 3.12, 3.13 and 3.14
+#   - Fix scikit-learn >= 1.8 compatibility issues
+#   - Remove numpy version restriction (works with numpy>=1.22)
+#   - Fix DataLab compatibility with datasets 4.0.0+
+#   - Fix null pointer bugs in DataLab issue managers
+#   - Update Python requirements to 3.10+
+
+# 2.7.0 - Broadening Data Quality Checks and ML Workflows
+#
+#   Major new functionalities include:
+#   - Detection of spurious correlations in image datasets with Datalab
+#   - New tutorial for improving ML performance with train and test set curation
 
 # 2.6.0 - Elevating Data Insights: Comprehensive Issue Checks & Expanded ML Task Compatibility
 #

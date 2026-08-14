@@ -1,21 +1,5 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
-
 """Methods to rank and score images in an object detection dataset (object detection data), based on how likely they
-are to contain label errors. """
+are to contain label errors."""
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypeVar
 import warnings
@@ -554,7 +538,7 @@ def _get_valid_subtype_score_params(
 
 
 def _get_aggregation_weights(
-    aggregation_weights: Optional[Dict[str, Any]] = None
+    aggregation_weights: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """This function validates aggregation weights, returning the default weights if none are provided."""
     if aggregation_weights is None:

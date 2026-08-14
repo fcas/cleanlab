@@ -1,19 +1,3 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
-
 """
 Methods to identify which examples have label issues in a classification dataset.
 The documentation below assumes a dataset with ``N`` examples and ``K`` classes.
@@ -372,12 +356,14 @@ def find_label_issues(
             prune_count_matrix = round_preserving_row_totals(tmp)
 
         # Prepare multiprocessing shared data
-        # On Linux, multiprocessing is started with fork,
-        # so data can be shared with global vairables + COW
+        # On Linux with Python <3.14, multiprocessing is started with fork,
+        # so data can be shared with global variables + COW
         # On Window/macOS, processes are started with spawn,
         # so data will need to be pickled to the subprocesses through input args
+        # In Python 3.14+, global variable sharing is no longer reliable even on Linux
         chunksize = max(1, K // n_jobs)
-        if n_jobs == 1 or os_name == "Linux":
+        use_global_vars = n_jobs == 1 or (os_name == "Linux" and sys.version_info < (3, 14))
+        if use_global_vars:
             global pred_probs_by_class, prune_count_matrix_cols
             pred_probs_by_class = {k: pred_probs[labels == k] for k in range(K)}
             prune_count_matrix_cols = {k: prune_count_matrix[:, k] for k in range(K)}

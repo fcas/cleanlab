@@ -1,19 +1,3 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
-
 """
 cleanlab can be used for learning with noisy labels for any dataset and model.
 
@@ -173,8 +157,8 @@ class CleanLearning(BaseEstimator):  # Inherits sklearn classifier
       * ``clf.predict(X)``
       * ``clf.score(X, y, sample_weight=None)``
 
-      See :py:mod:`cleanlab.experimental` for examples of sklearn wrappers,
-      e.g. around PyTorch and FastText.
+      See :py:mod:`cleanlab.models`, the tutorials, and examples/ repo
+      for examples of sklearn wrappers, e.g. around PyTorch, Keras, or FastText.
 
       If the model is not sklearn-compatible by default, it might be the case that
       standard packages can adapt the model. For example, you can adapt PyTorch
@@ -243,7 +227,7 @@ class CleanLearning(BaseEstimator):  # Inherits sklearn classifier
         self._default_clf = False
         if clf is None:
             # Use logistic regression if no classifier is provided.
-            clf = LogReg(multi_class="auto", solver="lbfgs")
+            clf = LogReg(solver="lbfgs")
             self._default_clf = True
 
         # Make sure the given classifier has the appropriate methods defined.
@@ -307,17 +291,12 @@ class CleanLearning(BaseEstimator):  # Inherits sklearn classifier
           Data features (i.e. training inputs for ML), typically an array of shape ``(N, ...)``,
           where N is the number of examples.
           Supported `DatasetLike` types beyond ``np.ndarray`` include:
-          ``pd.DataFrame``, ``scipy.sparse.csr_matrix``, ``torch.utils.data.Dataset``, ``tensorflow.data.Dataset``,
+          ``pd.DataFrame``, ``scipy.sparse.csr_matrix``, ``torch.utils.data.Dataset``,
           or any dataset object ``X`` that supports list-based indexing:
           ``X[index_list]`` to select a subset of training examples.
           Your classifier that this instance was initialized with,
           ``clf``, must be able to ``fit()`` and ``predict()`` data of this format.
 
-          Note
-          ----
-          If providing `X` as a ``tensorflow.data.Dataset``,
-          make sure ``shuffle()`` has been called before ``batch()`` (if shuffling)
-          and no other order-destroying operation (eg. ``repeat()``) has been applied.
 
         labels : array_like
           An array of shape ``(N,)`` of noisy classification labels, where some labels may be erroneous.

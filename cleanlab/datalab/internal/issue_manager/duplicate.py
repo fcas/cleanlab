@@ -1,18 +1,3 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Optional, Union
@@ -24,7 +9,7 @@ from scipy.sparse import csr_matrix
 
 
 from cleanlab.datalab.internal.issue_manager import IssueManager
-from cleanlab.internal.neighbor.knn_graph import create_knn_graph_and_index
+from cleanlab.datalab.internal.issue_manager.knn_graph_helpers import set_knn_graph
 from cleanlab.internal.constants import EPSILON
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -69,15 +54,14 @@ class NearDuplicateIssueManager(IssueManager):
         features: Optional[npt.NDArray] = None,
         **kwargs,
     ) -> None:
-        knn_graph = self._process_knn_graph_from_inputs(kwargs)
-        old_knn_metric = self.datalab.get_info("statistics").get("knn_metric")
-        metric_changes = self.metric and self.metric != old_knn_metric
+        knn_graph, self.metric, _ = set_knn_graph(
+            features=features,
+            find_issues_kwargs=kwargs,
+            metric=self.metric,
+            k=self.k,
+            statistics=self.datalab.get_info("statistics"),
+        )
 
-        if knn_graph is None or metric_changes:
-            knn_graph, knn = create_knn_graph_and_index(
-                features, n_neighbors=self.k, metric=self.metric
-            )
-            self.metric = knn.metric
         N = knn_graph.shape[0]
         nn_distances = knn_graph.data.reshape(N, -1)[:, 0]
         median_nn_distance = max(np.median(nn_distances), EPSILON)  # avoid threshold = 0
@@ -135,25 +119,6 @@ class NearDuplicateIssueManager(IssueManager):
 
         return near_duplicate_sets
 
-    def _process_knn_graph_from_inputs(self, kwargs: Dict[str, Any]) -> Union[csr_matrix, None]:
-        """Determine if a knn_graph is provided in the kwargs or if one is already stored in the associated Datalab instance."""
-        knn_graph_kwargs: Optional[csr_matrix] = kwargs.get("knn_graph", None)
-        knn_graph_stats = self.datalab.get_info("statistics").get("weighted_knn_graph", None)
-
-        knn_graph: Optional[csr_matrix] = None
-        if knn_graph_kwargs is not None:
-            knn_graph = knn_graph_kwargs
-        elif knn_graph_stats is not None:
-            knn_graph = knn_graph_stats
-
-        if isinstance(knn_graph, csr_matrix) and kwargs.get("k", 0) > (
-            knn_graph.nnz // knn_graph.shape[0]
-        ):
-            # If the provided knn graph is insufficient, then we need to recompute the knn graph
-            # with the provided features
-            knn_graph = None
-        return knn_graph
-
     def collect_info(self, knn_graph: csr_matrix, median_nn_distance: float) -> dict:
         issues_dict = {
             "average_near_duplicate_score": self.issues[self.issue_score_key].mean(),
@@ -195,7 +160,7 @@ class NearDuplicateIssueManager(IssueManager):
         old_graph_exists = old_knn_graph is not None
         prefer_new_graph = (
             not old_graph_exists
-            or knn_graph.nnz > old_knn_graph.nnz
+            or (old_knn_graph is not None and knn_graph.nnz > old_knn_graph.nnz)
             or self.metric != self.datalab.get_info("statistics").get("knn_metric", None)
         )
         if prefer_new_graph:

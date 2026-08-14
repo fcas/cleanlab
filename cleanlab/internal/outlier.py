@@ -1,19 +1,3 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
-
 """
 Helper functions used internally for outlier detection tasks.
 """
@@ -113,13 +97,13 @@ def correct_precision_errors(
         An array of scores of shape ``(N,)`` for N examples with scores between 0 and 1.
     """
     if metric == "cosine":
-        tolerance = C * np.finfo(np.float_).epsneg
+        tolerance = C * np.finfo(np.float64).epsneg
     elif metric == "euclidean":
-        tolerance = np.sqrt(C * np.finfo(np.float_).eps)
+        tolerance = np.sqrt(C * np.finfo(np.float64).eps)
     elif metric == "minkowski":
         if p is None:
             raise ValueError("When metric is 'minkowski' you must specify the 'p' parameter")
-        tolerance = (C * np.finfo(np.float_).eps) ** (1 / p)
+        tolerance = (C * np.finfo(np.float64).eps) ** (1 / p)
     else:
         return scores
 

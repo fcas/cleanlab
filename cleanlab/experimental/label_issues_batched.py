@@ -1,19 +1,3 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
-
 """
 Implementation of :py:func:`filter.find_label_issues <cleanlab.filter.find_label_issues>`
 that does not need much memory by operating in mini-batches.
@@ -664,7 +648,17 @@ class LabelInspector:
             else:
                 use_thorough = np.zeros(len(inds), dtype=bool)
             args = zip(inds, use_thorough)
-            with mp.Pool(self.n_jobs) as pool:
+
+            # Use fork method explicitly for Python 3.14+ compatibility
+            # Falls back to default method if fork is not available
+            try:
+                ctx = mp.get_context("fork")
+                pool_class = ctx.Pool
+            except (RuntimeError, ValueError):
+                # fork not available (Windows) or already set, use default
+                pool_class = mp.Pool
+
+            with pool_class(self.n_jobs) as pool:
                 if not self.off_diagonal_calibrated:
                     prune_count_batch = np.sum(
                         np.asarray(list(pool.imap_unordered(_compute_num_issues, args)))

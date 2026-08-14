@@ -1,19 +1,3 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
-
 """
 Checks to ensure valid inputs for various methods.
 """
@@ -46,13 +30,6 @@ def assert_valid_inputs(
     allow_empty_X = True
     if pred_probs is None:
         allow_empty_X = False
-    try:
-        import tensorflow
-
-        if isinstance(X, tensorflow.data.Dataset):
-            allow_empty_X = True  # length of X may differ due to batch-size used in tf Dataset, so don't check it
-    except Exception:
-        pass
 
     if not allow_empty_X:
         assert_nonempty_input(X)
@@ -169,14 +146,6 @@ def assert_indexing_works(
             if isinstance(X, torch.utils.data.Dataset):  # indexing for pytorch Dataset
                 _ = torch.utils.data.Subset(X, idx)  # type: ignore[call-overload]
                 is_indexed = True
-        except Exception:
-            pass
-    if not is_indexed:
-        try:  # check if X is tensorflow Dataset object using lazy import
-            import tensorflow as tf
-
-            if isinstance(X, tf.data.Dataset):
-                is_indexed = True  # skip check for tensorflow Dataset (too expensive)
         except Exception:
             pass
     if not is_indexed:

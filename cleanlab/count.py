@@ -1,19 +1,3 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
-
 """
 Methods to estimate latent structures used for confident learning, including:
 
@@ -54,7 +38,6 @@ from cleanlab.internal.util import (
     clip_values,
     get_num_classes,
     get_unique_classes,
-    is_tensorflow_dataset,
     is_torch_dataset,
     round_preserving_row_totals,
     train_val_split,
@@ -597,6 +580,7 @@ def compute_confident_joint(
     # size num_classes, with True if the example confidently belongs to that class and False if not.
     pred_probs_bool = pred_probs >= thresholds - 1e-6
     num_confident_bins = pred_probs_bool.sum(axis=1)
+    # The indices where this is false, are often outliers (not confident of any label)
     at_least_one_confident = num_confident_bins > 0
     more_than_one_confident = num_confident_bins > 1
     pred_probs_argmax = pred_probs.argmax(axis=1)
@@ -612,11 +596,19 @@ def compute_confident_joint(
     # true_labels_confident omits meaningless all-False rows
     true_labels_confident = true_label_guess[at_least_one_confident]
     labels_confident = labels[at_least_one_confident]
-    confident_joint = confusion_matrix(
-        y_true=true_labels_confident,
-        y_pred=labels_confident,
-        labels=range(pred_probs.shape[1]),
-    ).T  # Guarantee at least one correctly labeled example is represented in every class
+
+    # Handle case where no examples are confident (sklearn >=1.8.0 compatibility)
+    # In sklearn <1.8.0, confusion_matrix with empty inputs returned zeros matrix
+    # In sklearn >=1.8.0, it raises ValueError - we emulate the old behavior
+    if len(true_labels_confident) == 0:
+        confident_joint = np.zeros((pred_probs.shape[1], pred_probs.shape[1]), dtype=int)
+    else:
+        confident_joint = confusion_matrix(
+            y_true=true_labels_confident,
+            y_pred=labels_confident,
+            labels=range(pred_probs.shape[1]),
+        ).T
+    # Guarantee at least one correctly labeled example is represented in every class
     np.fill_diagonal(confident_joint, confident_joint.diagonal().clip(min=1))
     if calibrate:
         confident_joint = calibrate_confident_joint(confident_joint, labels)
@@ -896,7 +888,7 @@ def estimate_py_and_noise_matrices_from_probabilities(
 def estimate_confident_joint_and_cv_pred_proba(
     X,
     labels,
-    clf=LogReg(multi_class="auto", solver="lbfgs"),
+    clf=LogReg(solver="lbfgs"),
     *,
     cv_n_folds=5,
     thresholds=None,
@@ -1019,8 +1011,7 @@ def estimate_confident_joint_and_cv_pred_proba(
 
         # dict with keys: which classes missing, values: index of holdout data from this class that is duplicated:
         missing_class_inds = {}
-        is_tf_or_torch_dataset = is_torch_dataset(X) or is_tensorflow_dataset(X)
-        if not is_tf_or_torch_dataset:
+        if not is_torch_dataset(X):
             # Ensure no missing classes in training set.
             train_cv_classes = set(s_train_cv)
             all_classes = set(range(num_classes))
@@ -1078,7 +1069,7 @@ def estimate_confident_joint_and_cv_pred_proba(
 def estimate_py_noise_matrices_and_cv_pred_proba(
     X,
     labels,
-    clf=LogReg(multi_class="auto", solver="lbfgs"),
+    clf=LogReg(solver="lbfgs"),
     *,
     cv_n_folds=5,
     thresholds=None,
@@ -1189,7 +1180,7 @@ def estimate_py_noise_matrices_and_cv_pred_proba(
 def estimate_cv_predicted_probabilities(
     X,
     labels,
-    clf=LogReg(multi_class="auto", solver="lbfgs"),
+    clf=LogReg(solver="lbfgs"),
     *,
     cv_n_folds=5,
     seed=None,
@@ -1255,7 +1246,7 @@ def estimate_cv_predicted_probabilities(
 def estimate_noise_matrices(
     X,
     labels,
-    clf=LogReg(multi_class="auto", solver="lbfgs"),
+    clf=LogReg(solver="lbfgs"),
     *,
     cv_n_folds=5,
     thresholds=None,

@@ -1,19 +1,3 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -228,7 +212,7 @@ def test_class_public_func():
     labels = data["true_labels_test"]
 
     # Fit Logistic Regression model on X_train and estimate train pred_probs
-    logreg = LogReg(multi_class="auto", solver="lbfgs")
+    logreg = LogReg(solver="lbfgs")
     logreg.fit(data["X_train"], data["true_labels_train"])
     train_pred_probs = logreg.predict_proba(data["X_train"])
 
@@ -490,7 +474,7 @@ def test_ood_predictions_scores():
     y_with_ood = np.hstack([y, data["true_labels_train"][1]])
 
     # Fit Logistic Regression model on X_train and estimate pred_probs
-    logreg = LogReg(multi_class="auto", solver="lbfgs")
+    logreg = LogReg(solver="lbfgs")
     logreg.fit(data["X_train"], data["true_labels_train"])
     pred_probs = logreg.predict_proba(X_with_ood)
 
@@ -663,7 +647,7 @@ def test_wrong_info_get_ood_predictions_scores():
 
 @given(
     fill_value=st.floats(
-        min_value=5 * float(np.finfo(np.float_).eps),
+        min_value=5 * float(np.finfo(np.float64).eps),
         max_value=5,
         exclude_min=False,
         allow_subnormal=False,

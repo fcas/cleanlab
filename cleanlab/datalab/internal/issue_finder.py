@@ -1,18 +1,3 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
 """
 Module for the :class:`IssueFinder` class, which is responsible for configuring,
 creating and running issue managers.
@@ -27,6 +12,7 @@ and collects the results to :py:class:`DataIssues <cleanlab.datalab.internal.dat
     This module is not intended to be used directly. Instead, use the public-facing
     :py:meth:`Datalab.find_issues <cleanlab.datalab.datalab.Datalab.find_issues>` method.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -41,14 +27,15 @@ from cleanlab.datalab.internal.issue_manager_factory import (
 )
 from cleanlab.datalab.internal.model_outputs import (
     MultiClassPredProbs,
-    RegressionPredictions,
     MultiLabelPredProbs,
+    RegressionPredictions,
 )
 from cleanlab.datalab.internal.task import Task
 
 if TYPE_CHECKING:  # pragma: no cover
-    import numpy.typing as npt
     from typing import Callable
+
+    import numpy.typing as npt
 
     from cleanlab.datalab.datalab import Datalab
 
@@ -58,6 +45,7 @@ _CLASSIFICATION_ARGS_DICT = {
     "outlier": ["pred_probs", "features", "knn_graph"],
     "near_duplicate": ["features", "knn_graph"],
     "non_iid": ["pred_probs", "features", "knn_graph"],
+    # The underperforming_group issue type requires a pair of inputs: (pred_probs, <any_of_the_other_three>)
     "underperforming_group": ["pred_probs", "features", "knn_graph", "cluster_ids"],
     "data_valuation": ["features", "knn_graph"],
     "class_imbalance": [],
@@ -481,5 +469,21 @@ class IssueFinder:
         )
         if drop_class_imbalance_check:
             issue_types_copy.pop("class_imbalance")
+
+        required_pairs_for_underperforming_group = [
+            ("pred_probs", "features"),
+            ("pred_probs", "knn_graph"),
+            ("pred_probs", "cluster_ids"),
+        ]
+        drop_underperforming_group_check = "underperforming_group" in issue_types_copy and not any(
+            all(
+                key in issue_types_copy["underperforming_group"]
+                and issue_types_copy["underperforming_group"].get(key) is not None
+                for key in pair
+            )
+            for pair in required_pairs_for_underperforming_group
+        )
+        if drop_underperforming_group_check:
+            issue_types_copy.pop("underperforming_group")
 
         return issue_types_copy

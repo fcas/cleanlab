@@ -1,3 +1,7 @@
+import matplotlib
+
+# Set non-interactive backend before importing pyplot to avoid GUI dependencies in CI
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
@@ -71,6 +75,8 @@ class TestCleanvisionIntegration:
             "null",
             "underperforming_group",
             # "non_iid",
+            # Spurious correlations issue type is checked by default on image datasets
+            "spurious_correlations",
         ]
 
         assert set(all_keys) == set(datalab.info.keys())

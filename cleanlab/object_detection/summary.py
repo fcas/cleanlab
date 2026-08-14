@@ -1,25 +1,21 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
-
 """
 Methods to display examples and their label issues in an object detection dataset.
 Here each image can have multiple objects, each with its own bounding box and class label.
 """
+
 from multiprocessing import Pool
-from typing import Optional, Any, Dict, Tuple, Union, List, TYPE_CHECKING, TypeVar, DefaultDict
+from typing import (
+    Optional,
+    Any,
+    Dict,
+    Tuple,
+    Union,
+    List,
+    TYPE_CHECKING,
+    TypeVar,
+    DefaultDict,
+    cast,
+)
 
 import numpy as np
 import collections
@@ -393,6 +389,7 @@ def visualize(
     """
     try:
         import matplotlib.pyplot as plt
+        from matplotlib.axes import Axes
     except ImportError as e:
         raise ImportError(
             "This functionality requires matplotlib. Install it via: `pip install matplotlib`"
@@ -430,6 +427,7 @@ def visualize(
     else:
         figsize = (14, 10) if figsize is None else figsize
         fig, axes = plt.subplots(nrows=1, ncols=2, frameon=False, figsize=figsize)
+        axes = cast(Tuple[Axes, Axes], axes)
         axes[0].axis("off")
         axes[0].imshow(image)
         axes[1].axis("off")

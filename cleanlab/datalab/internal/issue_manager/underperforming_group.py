@@ -1,18 +1,3 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Optional, Union, Tuple
@@ -25,7 +10,7 @@ from scipy.sparse import csr_matrix
 from sklearn.cluster import DBSCAN
 
 from cleanlab.datalab.internal.issue_manager import IssueManager
-from cleanlab.internal.neighbor.knn_graph import create_knn_graph_and_index
+from cleanlab.datalab.internal.issue_manager.knn_graph_helpers import set_knn_graph
 from cleanlab.rank import get_self_confidence_for_each_label
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -59,9 +44,9 @@ class UnderperformingGroupIssueManager(IssueManager):
 
     description: ClassVar[
         str
-    ] = """An underperforming group refers to a collection of “hard” examples
-    for which the model predictions are poor. The quality of predictions is
-    computed using the :py:func:`get_self_confidence_for_each_label <cleanlab.rank.get_self_confidence_for_each_label>` function.
+    ] = """An underperforming group refers to a cluster of similar examples
+    (i.e. a slice) in the dataset for which the ML model predictions
+    are particularly poor (loss evaluation over this subpopulation is high).
     """
     issue_name: ClassVar[str] = "underperforming_group"
     verbosity_levels = {
@@ -106,7 +91,10 @@ class UnderperformingGroupIssueManager(IssueManager):
             )
             raise TypeError(error_msg)
         if cluster_ids is None:
-            knn_graph = self.set_knn_graph(features, kwargs)
+            statistics = self.datalab.get_info("statistics")
+            knn_graph, self.metric, _ = set_knn_graph(
+                features, kwargs, self.metric, self.k, statistics
+            )
             cluster_ids = self.perform_clustering(knn_graph)
             performed_clustering = True
         else:
@@ -122,11 +110,13 @@ class UnderperformingGroupIssueManager(IssueManager):
                 "No meaningful clusters were generated for determining underperforming group."
             )
         n_clusters = len(unique_cluster_ids)
-        worst_cluster_id, worst_cluster_ratio = self.get_worst_cluster(
-            cluster_ids, unique_cluster_ids, labels, pred_probs
+        cluster_id_to_score, worst_cluster_id, worst_cluster_ratio = (
+            self.get_underperforming_clusters(cluster_ids, unique_cluster_ids, labels, pred_probs)
         )
         is_issue_column = cluster_ids == worst_cluster_id
-        scores = np.where(is_issue_column, worst_cluster_ratio, 1)
+        scores = np.ones(is_issue_column.shape[0])
+        for cluster_id, cluster_score in cluster_id_to_score.items():
+            scores[cluster_ids == cluster_id] = cluster_score
         self.issues = pd.DataFrame(
             {
                 f"is_{self.issue_name}_issue": is_issue_column,
@@ -141,20 +131,6 @@ class UnderperformingGroupIssueManager(IssueManager):
             performed_clustering=performed_clustering,
             worst_cluster_id=worst_cluster_id,
         )
-
-    def set_knn_graph(
-        self, features: Optional[npt.NDArray], find_issues_kwargs: Dict[str, Any]
-    ) -> csr_matrix:
-        knn_graph = self._process_knn_graph_from_inputs(find_issues_kwargs)
-        old_knn_metric = self.datalab.get_info("statistics").get("knn_metric")
-        metric_changes = self.metric and self.metric != old_knn_metric
-
-        if knn_graph is None or metric_changes:
-            knn_graph, knn = create_knn_graph_and_index(
-                features, n_neighbors=self.k, metric=self.metric
-            )
-            self.metric = knn.metric
-        return knn_graph
 
     def perform_clustering(self, knn_graph: csr_matrix) -> npt.NDArray[np.int_]:
         """Perform clustering of datapoints using a knn graph as distance matrix.
@@ -203,26 +179,34 @@ class UnderperformingGroupIssueManager(IssueManager):
         )
         return unique_cluster_ids
 
-    def get_worst_cluster(
+    def get_underperforming_clusters(
         self,
         cluster_ids: npt.NDArray[np.int_],
         unique_cluster_ids: npt.NDArray[np.int_],
         labels: npt.NDArray,
         pred_probs: npt.NDArray,
-    ) -> Tuple[int, float]:
-        """Get ID and quality score of underperforming cluster.
+    ) -> Tuple[Dict[int, float], int, float]:
+        """Get ID and quality score of each underperforming cluster.
 
         Args:
-            cluster_ids (npt.NDArray[np.int_]): _description_
-            unique_cluster_ids (npt.NDArray[np.int_]): _description_
-            labels (npt.NDArray): _description_
-            pred_probs (npt.NDArray): _description_
+            cluster_ids (npt.NDArray[np.int_]): Cluster IDs corresponding to each sample
+            unique_cluster_ids (npt.NDArray[np.int_]): Unique cluster IDs excluding noisy clusters
+            labels (npt.NDArray): Label of each sample
+            pred_probs (npt.NDArray): Prediction probability
 
         Returns:
-            Tuple[int, float]: (Underperforming Cluster ID, Cluster Quality Score)
+            Tuple[Dict[int, float], int, float]: (Cluster IDs and their scores, Worst Cluster ID, Worst Cluster Quality Score)
         """
-        worst_cluster_performance = 1  # Largest possible probability value
+        worst_cluster_ratio = 1.0  # Largest possible probability value
         worst_cluster_id = min(unique_cluster_ids) - 1
+        # For calculating mean_performance of the dataset, choose labels and pred-probs of samples belonging to non-noisy clusters
+        filtered_cluster_id_mask = np.isin(cluster_ids, unique_cluster_ids)
+        filtered_labels = labels[filtered_cluster_id_mask]
+        filtered_pred_probs = pred_probs[filtered_cluster_id_mask]
+        mean_performance = get_self_confidence_for_each_label(
+            filtered_labels, filtered_pred_probs
+        ).mean()
+        cluster_ids_to_score = {}
         for cluster_id in unique_cluster_ids:
             cluster_mask = cluster_ids == cluster_id
             cur_cluster_ids = labels[cluster_mask]
@@ -230,37 +214,17 @@ class UnderperformingGroupIssueManager(IssueManager):
             cluster_performance = get_self_confidence_for_each_label(
                 cur_cluster_ids, cur_cluster_pred_probs
             ).mean()
-            if cluster_performance < worst_cluster_performance:
-                worst_cluster_performance = cluster_performance
-                worst_cluster_id = cluster_id
-        mean_performance = get_self_confidence_for_each_label(labels, pred_probs).mean()
-        worst_cluster_ratio = min(worst_cluster_performance / mean_performance, 1.0)
+            if cluster_performance < mean_performance:
+                cluster_ids_to_score[cluster_id] = cluster_performance / mean_performance
+                if cluster_performance < worst_cluster_ratio:
+                    worst_cluster_ratio = cluster_ids_to_score[cluster_id]
+                    worst_cluster_id = cluster_id
         worst_cluster_id = (
             worst_cluster_id
             if worst_cluster_ratio < self.threshold
             else self.NO_UNDERPERFORMING_CLUSTER_ID
         )
-        return worst_cluster_id, worst_cluster_ratio
-
-    def _process_knn_graph_from_inputs(self, kwargs: Dict[str, Any]) -> Union[csr_matrix, None]:
-        """Determine if a knn_graph is provided in the kwargs or if one is already stored in the associated Datalab instance."""
-        knn_graph_kwargs: Optional[csr_matrix] = kwargs.get("knn_graph", None)
-        knn_graph_stats = self.datalab.get_info("statistics").get("weighted_knn_graph", None)
-
-        knn_graph: Optional[csr_matrix] = None
-        if knn_graph_kwargs is not None:
-            knn_graph = knn_graph_kwargs
-        elif knn_graph_stats is not None:
-            knn_graph = knn_graph_stats
-
-        if isinstance(knn_graph, csr_matrix) and kwargs.get("k", 0) > (
-            knn_graph.nnz // knn_graph.shape[0]
-        ):
-            # If the provided knn graph is insufficient, then we need to recompute the knn graph
-            # with the provided features
-            knn_graph = None
-
-        return knn_graph
+        return cluster_ids_to_score, worst_cluster_id, worst_cluster_ratio
 
     def collect_info(
         self,
@@ -312,7 +276,11 @@ class UnderperformingGroupIssueManager(IssueManager):
         old_graph_exists = old_knn_graph is not None
         prefer_new_graph = (
             not old_graph_exists
-            or (isinstance(knn_graph, csr_matrix) and knn_graph.nnz > old_knn_graph.nnz)
+            or (
+                isinstance(knn_graph, csr_matrix)
+                and old_knn_graph is not None
+                and knn_graph.nnz > old_knn_graph.nnz
+            )
             or self.metric != self.datalab.get_info("statistics").get("knn_metric", None)
         )
         if prefer_new_graph:

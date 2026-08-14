@@ -1,34 +1,18 @@
-# Copyright (C) 2017-2023  Cleanlab Inc.
-# This file is part of cleanlab.
-#
-# cleanlab is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# cleanlab is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with cleanlab.  If not, see <https://www.gnu.org/licenses/>.
-
 """
 Ancillary helper methods used internally throughout this package; mostly related to Confident Learning algorithms.
 """
 
-import warnings
+from typing import Optional, Tuple, Union
+
 import numpy as np
 import pandas as pd
-from typing import Union, Tuple
 
-from cleanlab.typing import DatasetLike, LabelLike
-from cleanlab.internal.validation import labels_to_array
 from cleanlab.internal.constants import FLOATING_POINT_COMPARISON, TINY_VALUE
+from cleanlab.internal.validation import labels_to_array
+from cleanlab.typing import DatasetLike, LabelLike
 
 
-def remove_noise_from_class(noise_matrix, class_without_noise) -> np.ndarray:
+def remove_noise_from_class(noise_matrix: np.ndarray, class_without_noise: int) -> np.ndarray:
     """A helper function in the setting of PU learning.
     Sets all P(label=class_without_noise|true_label=any_other_class) = 0
     in noise_matrix for pulearning setting, where we have
@@ -53,17 +37,16 @@ def remove_noise_from_class(noise_matrix, class_without_noise) -> np.ndarray:
     x = np.copy(noise_matrix)
 
     # Set P( labels = cwn | y != cwn) = 0 (no noise)
-    x[cwn, [i for i in range(K) if i != cwn]] = 0.0
+    class_arange = np.arange(K)
+    x[cwn, class_arange[class_arange != cwn]] = 0.0
 
     # Normalize columns by increasing diagonal terms
     # Ensures noise_matrix is a valid probability matrix
-    for i in range(K):
-        x[i][i] = 1 - float(np.sum(x[:, i]) - x[i][i])
-
+    np.fill_diagonal(x, 1 - (np.sum(x, axis=0) - np.diag(x)))
     return x
 
 
-def clip_noise_rates(noise_matrix) -> np.ndarray:
+def clip_noise_rates(noise_matrix: np.ndarray) -> np.ndarray:
     """Clip all noise rates to proper range [0,1), but
     do not modify the diagonal terms because they are not
     noise rates.
@@ -78,19 +61,11 @@ def clip_noise_rates(noise_matrix) -> np.ndarray:
         Diagonal terms are not noise rates, but are consistency P(label=k|true_label=k)
         Assumes columns of noise_matrix sum to 1"""
 
-    def clip_noise_rate_range(noise_rate) -> float:
-        """Clip noise rate P(label=k'|true_label=k) or P(true_label=k|label=k')
-        into proper range [0,1)"""
-        return min(max(noise_rate, 0.0), 0.9999)
-
-    # Vectorize clip_noise_rate_range for efficiency with np.ndarrays.
-    vectorized_clip = np.vectorize(clip_noise_rate_range)
-
     # Preserve because diagonal entries are not noise rates.
     diagonal = np.diagonal(noise_matrix)
 
     # Clip all noise rates (efficiently).
-    noise_matrix = vectorized_clip(noise_matrix)
+    noise_matrix = np.clip(noise_matrix, 0, 0.9999)
 
     # Put unmodified diagonal back.
     np.fill_diagonal(noise_matrix, diagonal)
@@ -100,7 +75,7 @@ def clip_noise_rates(noise_matrix) -> np.ndarray:
     return noise_matrix
 
 
-def clip_values(x, low=0.0, high=1.0, new_sum=None) -> np.ndarray:
+def clip_values(x, low=0.0, high=1.0, new_sum: Optional[float] = None) -> np.ndarray:
     """Clip all values in p to range [low,high].
     Preserves sum of x.
 
@@ -123,22 +98,19 @@ def clip_values(x, low=0.0, high=1.0, new_sum=None) -> np.ndarray:
     x : np.ndarray
         A list of clipped values, summing to the same sum as x."""
 
-    def clip_range(a, low=low, high=high):
-        """Clip a into range [low,high]"""
-        return min(max(a, low), high)
-
-    vectorized_clip = np.vectorize(
-        clip_range
-    )  # Vectorize clip_range for efficiency with np.ndarrays
-    prev_sum = sum(x) if new_sum is None else new_sum  # Store previous sum
-    x = vectorized_clip(x)  # Clip all values (efficiently)
+    if len(x.shape) > 1:
+        raise TypeError(
+            f"only size-1 arrays can be converted to Python scalars but 'x' had shape {x.shape}"
+        )
+    prev_sum = np.sum(x) if new_sum is None else new_sum  # Store previous sum
+    x = np.clip(x, low, high)  # Clip all values (efficiently)
     x = (
-        x * prev_sum / np.clip(float(sum(x)), a_min=TINY_VALUE, a_max=None)
+        x * prev_sum / np.clip(np.sum(x), a_min=TINY_VALUE, a_max=None)
     )  # Re-normalized values to sum to previous sum
     return x
 
 
-def value_counts(x, *, num_classes=None, multi_label=False) -> np.ndarray:
+def value_counts(x, *, num_classes: Optional[int] = None, multi_label=False) -> np.ndarray:
     """Returns an np.ndarray of shape (K, 1), with the
     value counts for every unique item in the labels list/array,
     where K is the number of unique entries in labels.
@@ -173,17 +145,27 @@ def value_counts(x, *, num_classes=None, multi_label=False) -> np.ndarray:
     if multi_label:
         x = [z for lst in x for z in lst]  # Flatten
     unique_classes, counts = np.unique(x, return_counts=True)
+
+    # Early exit if num_classes is not provided or redundant
     if num_classes is None or num_classes == len(unique_classes):
         return counts
+
     # Else, there are missing classes
-    if num_classes <= max(unique_classes):
-        raise ValueError(f"Required: num_classes > max(x), but {num_classes} <= {max(x)}.")
+    labels_are_integers = np.issubdtype(np.array(x).dtype, np.integer)
+    if labels_are_integers and num_classes <= np.max(unique_classes):
+        raise ValueError(f"Required: num_classes > max(x), but {num_classes} <= {np.max(x)}.")
+
     # Add zero counts for all missing classes in [0, 1,..., num_classes-1]
-    # multi_label=False regardless because x was flattened.
-    missing_classes = get_missing_classes(x, num_classes=num_classes, multi_label=False)
-    missing_counts = [(z, 0) for z in missing_classes]
+    total_counts = np.zeros(num_classes, dtype=int)
+    # Fill in counts for classes that are present.
+    # If labels are integers, unique_classes can be used directly as indices to place counts
+    # into the correct positions in total_counts array.
+    # If labels are strings, use a slice to fill counts sequentially since strings do not map to indices.
+    count_ids = unique_classes if labels_are_integers else slice(len(unique_classes))
+    total_counts[count_ids] = counts
+
     # Return counts with zeros for all missing classes.
-    return np.array(list(zip(*sorted(list(zip(unique_classes, counts)) + missing_counts)))[1])
+    return total_counts
 
 
 def value_counts_fill_missing_classes(x, num_classes, *, multi_label=False) -> np.ndarray:
@@ -440,16 +422,6 @@ def train_val_split(
         except Exception:
             pass
     if not split_completed:
-        try:  # check if X is tensorflow Dataset object using lazy import
-            import tensorflow
-
-            if isinstance(X, tensorflow.data.Dataset):  # special splitting for tensorflow Dataset
-                X_train = extract_indices_tf(X, train_idx, allow_shuffle=True)
-                X_holdout = extract_indices_tf(X, holdout_idx, allow_shuffle=False)
-                split_completed = True
-        except Exception:
-            pass
-    if not split_completed:
         try:
             X_train, X_holdout = X[train_idx], X[holdout_idx]
         except Exception:
@@ -491,115 +463,9 @@ def subset_data(X, mask) -> DatasetLike:
     except Exception:
         pass
     try:
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore")
-            import tensorflow
-
-            if isinstance(X, tensorflow.data.Dataset):  # special splitting for tensorflow Dataset
-                mask_idx = np.nonzero(mask)[0]
-                return extract_indices_tf(X, mask_idx, allow_shuffle=True)
-    except Exception:
-        pass
-    try:
         return X[mask]
     except Exception:
         raise TypeError("Data features X must be subsettable with boolean mask array: X[mask]")
-
-
-def extract_indices_tf(X, idx, allow_shuffle) -> DatasetLike:
-    """Extracts subset of tensorflow dataset corresponding to examples at particular indices.
-
-    Args:
-      X : ``tensorflow.data.Dataset``
-
-      idx : array_like of integer indices corresponding to examples to keep in the dataset.
-        Returns subset of examples in the dataset X that correspond to these indices.
-
-      allow_shuffle : bool
-        Whether or not shuffling of this data is allowed (eg. must turn off shuffling for validation data).
-
-    Note: this code only works on Datasets in which:
-    * ``shuffle()`` has been called before ``batch()``,
-    * no other order-destroying operation (eg. ``repeat()``) has been applied.
-
-    Indices are extracted from the original version of Dataset (before shuffle was called rather than in shuffled order).
-    """
-    import tensorflow
-
-    idx = np.asarray(idx)
-    idx = np.int64(idx)  # needed for Windows (reconsider if necessary in the future)
-
-    og_batch_size = None
-    if hasattr(X, "_batch_size"):
-        og_batch_size = int(X._batch_size)
-        X = X.unbatch()
-
-    unshuffled_X, buffer_size = unshuffle_tensorflow_dataset(X)
-    if unshuffled_X is not None:
-        X = unshuffled_X
-
-    # Create index,value pairs in the dataset (adds extra indices that werent there before)
-    X = X.enumerate()
-    keys_tensor = tensorflow.constant(idx)
-    vals_tensor = tensorflow.ones_like(keys_tensor)  # Ones will be casted to True
-    table = tensorflow.lookup.StaticHashTable(
-        tensorflow.lookup.KeyValueTensorInitializer(keys_tensor, vals_tensor),
-        default_value=0,
-    )  # If index not in table, return 0
-
-    def hash_table_filter(index, value):
-        table_value = table.lookup(index)  # 1 if index in arr, else 0
-        index_in_arr = tensorflow.cast(table_value, tensorflow.bool)  # 1 -> True, 0 -> False
-        return index_in_arr
-
-    # Filter the dataset, then drop the added indices
-    X_subset = X.filter(hash_table_filter).map(lambda idx, value: value)
-
-    if (unshuffled_X is not None) and allow_shuffle:
-        X_subset = X_subset.shuffle(buffer_size=buffer_size)
-
-    if og_batch_size is not None:  # reset batch size to original value
-        X_subset = X_subset.batch(og_batch_size)
-
-    return X_subset
-
-
-def unshuffle_tensorflow_dataset(X) -> tuple:
-    """Applies iterative inverse transformations to dataset to get version before ShuffleDataset was created.
-    If no ShuffleDataset is in the transformation-history of this dataset, returns None.
-
-    Parameters
-    ----------
-    X : a tensorflow Dataset that may have been created via series of transformations, one being shuffle.
-
-    Returns
-    -------
-    Tuple (pre_X, buffer_size) where:
-      pre_X : Dataset that was previously transformed to get ShuffleDataset (or None),
-      buffer_size : int `buffer_size` previously used in ShuffleDataset,
-        or ``len(pre_X)`` if buffer_size cannot be determined, or None if no ShuffleDataset found.
-    """
-    try:
-        from tensorflow.python.data.ops.dataset_ops import (
-            ShuffleDataset,
-        )
-
-        X_inputs = [X]
-        while len(X_inputs) == 1:
-            pre_X = X_inputs[0]
-            if isinstance(pre_X, ShuffleDataset):
-                buffer_size = len(pre_X)
-                if hasattr(pre_X, "_buffer_size"):
-                    buffer_size = pre_X._buffer_size.numpy()
-                X_inputs = (
-                    pre_X._inputs()
-                )  # get the dataset that was transformed to create the ShuffleDataset
-                if len(X_inputs) == 1:
-                    return (X_inputs[0], buffer_size)
-            X_inputs = pre_X._inputs()  # returns list of input datasets used to create X
-    except Exception:
-        pass
-    return (None, None)
 
 
 def is_torch_dataset(X) -> bool:
@@ -611,17 +477,6 @@ def is_torch_dataset(X) -> bool:
     except Exception:
         pass
     return False  # assumes this cannot be torch dataset if torch cannot be imported
-
-
-def is_tensorflow_dataset(X) -> bool:
-    try:
-        import tensorflow
-
-        if isinstance(X, tensorflow.data.Dataset):
-            return True
-    except Exception:
-        pass
-    return False  # assumes this cannot be tensorflow dataset if tensorflow cannot be imported
 
 
 def csr_vstack(a, b) -> DatasetLike:
